@@ -1,72 +1,89 @@
-# PromoterPrediction_Tokenizers
+# Optimizing Genomic Language Models for Promoter Prediction
 
-This repository contains the full pipeline for evaluating tokenization methods in genomic promoter classification using large language models (LLMs). It includes data preparation, tokenizer training, model pretraining, fine-tuning, evaluation, and explainability.
+This repository contains the complete code for reproducing the experiments described in the paper: **"Optimizing Genomic Language Models for Promoter Prediction: A Comparative Study of Tokenization and Cross-Species Learning."**
 
-## Project Overview
+The experiments cover four tokenization methods, two negative data generation strategies, pretraining validation, cross-species transfer learning, and Explainable AI (XAI) analysis using SHAP.
 
-The project compares four tokenization strategies—non-overlapping 6-mer, overlapping 6-mer, BPE, and WPC—across multiple organisms and two negative data generation methods. The pipeline trains and evaluates models using standard classification metrics and includes tools for statistical testing and interpretability analysis.
+## ⚙️ Environment Setup
 
-## Pipeline Structure
+[cite_start]This project relies on **Python** and **Conda** for environment management to ensure reproducibility (as detailed in the "Availability of data and materials" section [cite: 1164]).
 
-1. **Data Creation**
-   - `positive_data_creation.py`: Creates positive promoter sequences from EPD.
-   - `negative_data_substitution.py`: Generates negative sequences by shuffling (positive-promoter-shuffled).
-   - `negative_data_genome.py`: Generates random negative fragments from the genome (random-non-promoter-fragments).
+1.  **Install Conda:** Ensure you have a working installation of Anaconda or Miniconda.
+2.  [cite_start]**Create and Activate the Environment:** Use the provided environment file (`PromoterPrediction.yml` - **Note:** This file is expected to be present in the final repository, as promised in the response to reviewers [cite: 66, 67]):
+    ```bash
+    conda env create -f PromoterPrediction.yml
+    conda activate promoter_prediction
+    ```
 
-2. **Tokenization**
-   - `tokenizer_training.py`: Trains BPE, WPC, and k-mer tokenizers.
+## 📂 Repository Structure (Required)
 
-3. **Pretraining**
-   - `model_pretraining.py`: Pretrains a masked language model on tokenized positive sequences.
+Before running the scripts, the following directory structure and data files must be in place.
 
-4. **Fine-Tuning**
-   - `model_finetune.py`: Fine-tunes models using labeled data for each organism.
+| Directory/File | Purpose |
+| :--- | :--- |
+| `data/` | **Input Data:** Must contain the processed train/val/test CSV files for both negative data strategies (e.g., `data/Substitution/train_human.csv`). Requires raw FASTA/BED files for initial processing. |
+| `tokenizers/` | Stores the trained BPE, WPC, and k-mer tokenizer files (`*.json`). |
+| `pretrain_models/` | Stores the RoBERTa models after the Masked Language Modeling (MLM) stage. |
+| `finetune_models/` | Stores the final, organism-specific fine-tuned models. |
+| `results/` | Stores raw prediction files and intermediate statistical results (used by `model_delong.py`, `model_evaluation.py`). |
+| `evaluation/` | Stores the final calculated performance metrics (AUC, F1, MCC). |
+| `delong_comparisons/` | Stores the CSV results and heatmaps from the DeLong statistical significance tests. |
+| `shap_plots/` | Stores raw SHAP value outputs and all generated SHAP figures (Figures 3, S4, S6). |
+| `logs/` | Stores training and fine-tuning log files. |
 
-5. **Prediction**
-   - `model_prediction.py`: Applies models to the test set.
+## 🚀 Workflow: Step-by-Step Reproduction
 
-6. **Evaluation**
-   - `model_evaluation.py`: Computes ACC, F1, AUC, MCC, TP, and FP for all models.
+The complete reproduction requires running the scripts in the specified order.
 
-7. **Model Comparison**
-   - `model_delong.py`: Performs pairwise DeLong tests to assess statistical differences between models.
+### 1. Data Preparation and Tokenizer Training
 
-8. **Explainability**
-   - `shap_importance_plots.py`: Generates SHAP-based visualizations for token importance across positions.
+This stage generates the datasets and the necessary tokenizers.
 
-## Directory Structure
+| Script | Purpose | Output Location |
+| :--- | :--- | :--- |
+| `positive_data_creation.py` | Converts raw FASTA data to CSV format. | `data/positive_data.csv` |
+| `negative_data_substitution.py` | Generates the **Positive-promoter-shuffled** dataset (Substitution method). | `data/Substitution/` |
+| `negative_data_genome.py` | Generates the **Random-non-promoter-fragments** dataset (Genome method). | `data/Genome/` |
+| `tokenizer_training.py` | Trains the four required tokenizers (k-mer non-overlapping/overlapping, BPE, WPC). | `tokenizers/` |
 
-```
-PromoterPrediction_Tokenizers/
-├── data/                     # Input sequences (positive and two negative types)
-├── delong_comparisons/       # Outputs from DeLong comparisons
-├── evaluation/               # Summary metrics for each model
-├── finetune_models/          # Fine-tuned models
-├── logs/                     # Logs from runs
-├── plots/                    # Visualizations and SHAP plots
-├── pretrain_models/          # Pretrained masked language models
-├── results/                  # Model prediction outputs
-├── tokenizers/               # Trained tokenizer models
-├── EDA.py
-├── positive_data_creation.py
-├── negative_data_substitution.py
-├── negative_data_genome.py
-├── tokenizer_training.py
-├── model_pretraining.py
-├── model_finetune.py
-├── model_prediction.py
-├── model_evaluation.py
-├── model_delong.py
-├── shap_importance_plots.py
-├── README.md
-└── .gitignore
-```
+### 2. Base Model Training (Pretraining)
 
-## Notes
+[cite_start]This stage performs Masked Language Modeling (MLM) exclusively on the **positive promoter sequences**[cite: 21].
 
-- Each organism has one positive dataset and two negative datasets:
-  - `substitution`: represents the positive-promoter-shuffled method.
-  - `genome`: represents the random-non-promoter-fragments method.
-- File suffixes indicate the method used:
-  - Files ending in `substitution` correspond to the shuffled negative dataset.
-  - Files ending in `genome` correspond to the random-fragment negative dataset.
+*The default `model_pretraining.py` covers the "Flat Pretrain" approach.*
+
+| Script | Purpose | Output Location |
+| :--- | :--- | :--- |
+| `model_pretraining.py` | Trains RoBERTaForMaskedLM for all four tokenizers on the combined positive training data. | `pretrain_models/` |
+
+### 3. Fine-Tuning and Core Evaluation
+
+This stage fine-tunes the pretrained models for classification (using both positive and negative samples) and evaluates their performance (Figures 2, 5, S3).
+
+| Script | Purpose | Output Location |
+| :--- | :--- | :--- |
+| `model_finetune.py` | Performs fine-tuning for all 32 models (4 tokenizers $\times$ 8 organisms $\times$ 2 negative methods). | `finetune_models/` |
+| `model_prediction.py` | Generates probability predictions for all test sets using the fine-tuned models. | `results/` |
+| `model_evaluation.py` | Calculates core performance metrics (AUC, F1, MCC) for all models. | `evaluation/` |
+| `model_delong.py` | [cite_start]Performs the **DeLong Test** with Benjamini-Hochberg (FDR) correction (Figure S3)[cite: 164]. | `delong_comparisons/` |
+
+### 4. Explainable AI (XAI) Analysis
+
+This stage generates the position-wise and individual SHAP importance plots (Figures 3, S4, S6).
+
+*Requires the raw SHAP value CSVs to be present in the `shap_plots/` directory.*
+
+| Script | Purpose | Output Location |
+| :--- | :--- | :--- |
+| `shap_importance_locations_plots.py` | Generates position-wise average SHAP importance plots (Figure 3, Figure S4). | `shap_plots/shap_importance_plots/` |
+| `shap_plots.py` | Contains helper functions for plotting the individual top 5 sequences (Figure S6) and nucleotide distribution analysis (Figure S5). | `shap_plots/shap_importance_plots/` |
+
+### 5. Advanced Experiments Reproduction
+
+To reproduce the more complex control experiments, you may need to adjust code paths or run specific scripts:
+
+| Experiment | Rationale | Code Files Involved |
+| :--- | :--- | :--- |
+| **No Pretrain Baseline (Figure S8)** | [cite_start]Rerun `model_finetune.py` by removing the step that loads weights from `pretrain_models/`[cite: 155]. | `model_finetune.py`, `model_prediction.py`, `model_evaluation.py` |
+| **Evolutionary Pretraining (Figure 4)** | [cite_start]Requires a custom pretraining script to handle the tiered epochs: 5 epochs (all species) $\rightarrow$ 5 epochs (close species only)[cite: 638]. **This logic must be implemented in a dedicated script.** | Custom pretraining script |
+| **Length Impact (300bp) (Figure S9)** | [cite_start]Rerun the fine-tuning and evaluation pipeline after modifying the sequence length parameters (e.g., `MAX_SEQ_LENGTH` in `model_finetune.py` and `model_prediction.py`) to $300$ instead of $600$[cite: 192]. | `model_finetune.py`, `model_prediction.py`, `model_evaluation.py` |
