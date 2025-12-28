@@ -41,6 +41,7 @@ This stage generates the datasets and the necessary tokenizers.
 
 | Script | Purpose | Output Location |
 | :--- | :--- | :--- |
+| `train_val_test_split.py` | Creates the train, validation and test sets from CDHIT output. | `train_ids.csv` `val_ids.csv` `test_ids.csv` |
 | `positive_data_creation.py` | Converts raw FASTA data to CSV format. | `data/positive_data.csv` |
 | `negative_data_substitution.py` | Generates the **Positive-promoter-shuffled** dataset (Substitution method). | `data/Substitution/` |
 | `negative_data_genome.py` | Generates the **Random-non-promoter-fragments** dataset (Genome method). | `data/Genome/` |
