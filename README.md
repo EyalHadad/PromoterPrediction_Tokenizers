@@ -79,12 +79,35 @@ This stage generates the position-wise and individual SHAP importance plots (Fig
 | `shap_importance_locations_plots.py` | Generates position-wise average SHAP importance plots (Figure 3, Figure S4). | `shap_plots/shap_importance_plots/` |
 | `shap_plots.py` | Contains helper functions for plotting the individual top 5 sequences (Figure S6) and nucleotide distribution analysis (Figure S5). | `shap_plots/shap_importance_plots/` |
 
-### 5. Advanced Experiments Reproduction
+### 5. Advanced Experiments Reproduction 
 
-To reproduce the more complex control experiments, you may need to adjust code paths or run specific scripts:
+To facilitate the reproduction of the additional control experiments requested during the review process, we provide a unified automation script: `run_advanced_experiments.py`. This script handles data preprocessing (including leakage prevention), model initialization, and evaluation for the following scenarios.
 
-| Experiment | Rationale | Code Files Involved |
-| :--- | :--- | :--- |
-| **No Pretrain Baseline (Figure S8)** | [cite_start]Rerun `model_finetune.py` by removing the step that loads weights from `pretrain_models/`[cite: 155]. | `model_finetune.py`, `model_prediction.py`, `model_evaluation.py` |
-| **Evolutionary Pretraining (Figure 4)** | [cite_start]Requires a custom pretraining script to handle the tiered epochs: 5 epochs (all species) $\rightarrow$ 5 epochs (close species only)[cite: 638]. **This logic must be implemented in a dedicated script.** | Custom pretraining script |
-| **Length Impact (300bp) (Figure S9)** | [cite_start]Rerun the fine-tuning and evaluation pipeline after modifying the sequence length parameters (e.g., `MAX_SEQ_LENGTH` in `model_finetune.py` and `model_prediction.py`) to $300$ instead of $600$[cite: 192]. | `model_finetune.py`, `model_prediction.py`, `model_evaluation.py` |
+#### A. External Validation on *C. familiaris* (Dog) [Figure 5]
+[cite_start]Performs real-time filtering of dog promoter sequences against the training set of all other organisms using CD-HIT (80% identity threshold) to ensure strictly non-redundant external validation [cite: 169-170, 242-244].
+* **Prerequisite:** Ensure `data/C.familiaris.txt` (FASTA format) is present.
+* **Command:**
+    ```bash
+    python run_advanced_experiments.py --experiment dog
+    ```
+
+#### B. Character-Level Tokenizer [Figure S7]
+[cite_start]Trains a character-level tokenizer (treating each nucleotide as a token), performs pretraining in-memory, and fine-tunes the model to evaluate the efficacy of single-nucleotide tokens versus motif-based tokens [cite: 425-427].
+* **Command:**
+    ```bash
+    python run_advanced_experiments.py --experiment char
+    ```
+
+#### C. Impact of Promoter Length (300bp) [Figure S9]
+Evaluates model performance when the input sequence is restricted to a shorter window (-250 to +50 bp relative to TSS). [cite_start]The script automatically center-crops the 600bp sequences during data loading [cite: 485-486].
+* **Command:**
+    ```bash
+    python run_advanced_experiments.py --experiment short
+    ```
+
+#### D. No-Pretrain Baseline [Figure S8]
+[cite_start]Trains the classification model directly on the labeled fine-tuning data with randomly initialized weights, skipping the Masked Language Modeling (MLM) phase, to quantify the contribution of pretraining [cite: 476-478].
+* **Command:**
+    ```bash
+    python run_advanced_experiments.py --experiment no_pretrain
+    ```
